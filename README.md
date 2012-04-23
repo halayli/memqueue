@@ -14,7 +14,6 @@ messages that have already been consumed but are not expired yet.
 A good example that illustrates memqueue's features is a group chat server over HTTP.
 We'll create a single queue for the group. Each user will poll from this queue waiting for new messages and when a new message arrives, the queue revision is bumped by one and the message get sent to all consumers along with the latest revision. During the time a consumer is consuming a message and reconnecting, new messages can come in and the queue revision can be bumped by few digits. This is not an issue because the next time each of the consumers connect, they'll provide the revision they are at and the poll will retrieve all the messages they have missed after this revision.
 
-Click here for a live [demo](http://www.memqueue.org/) 
 # memqueue REST API 
 
 memqueue has an HTTP REST interface and runs its own HTTP server built on top of [lthread](https://github.com/halayli/lthread/). Websocket support is on the TODO list.
