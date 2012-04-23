@@ -41,6 +41,16 @@ if *max_size* is specified, and the queue is full, this parameter specifies whet
 
 If set, consumers can specify their `<consumer_id>` when polling to inform other consumers that `<consumer_id>` started polling. memqueue only inform other consumers about *new* consumers. A consumer is considered new if he hasn't been seen polling in the last *consumer_expiry* period.
 
+###Post a message to `<queue_name>`
+
+    POST /<queue_name>
+
+**Parameters**
+
+`expiry: Integer (ms)`. (optional)
+
+Message `data` must be included in the HTTP POST body
+
 ###Poll messages from `<queue_name>`
 
     GET /<queue_name>
