@@ -34,7 +34,7 @@ Number of messages a queue will hold before it either starts dropping messages f
 
 `drop_from_head: Boolean (0 or 1)`. (Optional)
 
-if *max_size* is specified, and the queue is full, this parameter specifies whether to drop a message from head and insert  a new one from tail or reject the message.
+if *max_size* is specified, and the queue is full, this parameter specifies whether to drop a message from head and insert  a new one at tail or reject the message.
 
 `consumer_expiry: Integer (ms)`. (optional)
 
