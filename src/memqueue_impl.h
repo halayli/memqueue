@@ -24,11 +24,11 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#include "common/queue.h" 
+#include <sys/queue.h>
 #include "http.h"
 #include "hash.h"
-#include "common/rbtree.h"
-#include "common/time.h" 
+#include "rbtree.h"
+#include "time.h" 
 #include "json/json.h"
 
 struct expiry_node;

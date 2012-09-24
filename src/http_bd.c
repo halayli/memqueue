@@ -143,7 +143,7 @@ get_cmd(struct _cmd *cmd, char *buff, int len)
 }
 
 void
-bd_lt_cli(lthread_t *lt, int fd)
+bd_lt_cli(int fd)
 {
     char buff[1024] = {0};
     int ret;
@@ -187,7 +187,7 @@ bd_lt_cli(lthread_t *lt, int fd)
 }
 
 void
-bd_lt_listener(lthread_t *lt, int args)
+bd_lt_listener(int args)
 {
     lthread_t *lt_new;
     socklen_t addrlen;
@@ -208,7 +208,7 @@ bd_lt_listener(lthread_t *lt, int args)
             break;
         }
 
-        lthread_create(&lt_new, bd_lt_cli, (void *)(long)c_fd);
+        lthread_create(&lt_new, (void *)bd_lt_cli, (void *)(long)c_fd);
     }
 }
 
@@ -229,9 +229,9 @@ cmd_man(cmd_opt_t *cmd)
 void
 cmd_ls(cmd_opt_t *cmd)
 {
-    char *tmp = lthread_summary();
+    /*char *tmp = lthread_summary();
     lthread_send(cmd->fd, tmp, strlen(tmp), 0);
-    free(tmp);
+    free(tmp); */
 
     return;
 }

@@ -35,18 +35,18 @@
 #include <sys/rtprio.h>
 #endif
 
-#include "common/queue.h"
+#include <sys/queue.h>
 #include "http_str.h"
 #include "http.h"
 #include "http_bd.h"
 #include "sock_easy.h"
 #include "log.h"
-#include "common/time.h"
+#include "time.h"
 #include "router.h"
 #include "memqueue.h"
 #define VERSION "1.0"
 
-void *lthread_run(void *tmp);
+#include <sys/wait.h>
 
 static int
 handle_args (int argc, char **argv, lsn_t *lsn)
@@ -110,6 +110,8 @@ done:
     return 0;
 }
 
+int lsn_fd = 0;
+
 int
 main(int argc, char *argv[])
 {
@@ -152,10 +154,27 @@ main(int argc, char *argv[])
     if (lsn_init(&lsn, http_route_handle_request, "/tmp", "memqueue") != 0)
         exit(1);
 
-    memqueue_init();
+    
+    lsn_fd = e_listener("127.0.0.1", lsn.lsn_port);
+    /*
+    int pid = 0;
+    int i = 0;
+    for (i = 0; i < 1; i++) {
+        pid = fork();
+        printf("forking %d\n", pid);
+        if (pid == 0) {
+            memqueue_init();
+            lsn_run(&lsn);
+        }
+    }
 
+    if (pid)
+        waitpid(pid, NULL, 0);
+    */
+    memqueue_init();
     lsn_run(&lsn);
-    printf("Exiting...!\n");
+
+    printf("Exiting...! %d\n", getpid());
 
     return 0;
 }

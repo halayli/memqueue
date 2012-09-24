@@ -37,7 +37,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include "common/queue.h"
+#include <sys/queue.h>
 #include "http_str.h"
 #include "http_impl.h"
 #include "http.h"
@@ -45,7 +45,7 @@
 #include "sock_easy.h"
 #include "log.h"
 #include <lthread.h>
-#include "common/time.h"
+#include "time.h"
 #include <netinet/tcp.h>
 
 int total = 0;
@@ -60,8 +60,8 @@ static int  http_recv_chunked(http_cli_t *cli);
 static int  http_recvbody(http_cli_t *cli);
 
 static int  http_handle_cli_rd(http_cli_t *cli);
-static void http_lt_cli_rd(lthread_t *lt, http_cli_t *cli);
-static void http_listener(lthread_t *lt, lsn_t *lsn);
+static void http_lt_cli_rd(http_cli_t *cli);
+static void http_listener(void *arg);
 static void http_cli_new(lsn_t *lsn, int fd, struct sockaddr_in *peer_addr);
 
 static int  http_cli_init(http_cli_t *cli);
@@ -564,10 +564,11 @@ http_handle_cli_rd(http_cli_t *cli)
 
 /* read data from client */
 static void
-http_lt_cli_rd(lthread_t *lt, http_cli_t *cli)
+http_lt_cli_rd(http_cli_t *cli)
 {
     int err = 0;
     DEFINE_LTHREAD;
+    lthread_detach();
 
     lthread_set_data(cli);
     while (1) {
@@ -592,17 +593,20 @@ http_lt_cli_rd(lthread_t *lt, http_cli_t *cli)
     http_cli_free(cli);
 }
 
+extern int lsn_fd;
 static void
-http_listener(lthread_t *lt, lsn_t *lsn)
+http_listener(void *arg)
 {
     int cli_fd = 0;
-    int lsn_fd = 0;
+    lsn_t *lsn = arg;
+    
     struct sockaddr_in peer_addr;
     socklen_t addrlen = sizeof(peer_addr);
 
     DEFINE_LTHREAD;
 
-    lsn_fd = e_listener("127.0.0.1", lsn->lsn_port);
+    printf("lsn_fd is %d\n", lsn_fd);
+    lsn_fd = dup(lsn_fd);
     if (lsn_fd == -1)
         return;
 
@@ -645,7 +649,7 @@ http_cli_new(lsn_t *lsn, int cli_fd, struct sockaddr_in *peer_addr)
     if (setsockopt(cli_fd, SOL_SOCKET, SO_REUSEADDR, &opt,sizeof(int)) == -1)
         perror("failed to set SOREUSEADDR on socket");
 
-    ret = lthread_create(&lt_cli_rd, http_lt_cli_rd, cli);
+    ret = lthread_create(&lt_cli_rd, (void*)http_lt_cli_rd, cli);
     if (ret != 0) {
         app_log(lsn->debug_log, APP_WRN, "http_cli_new failed");
         goto err;
@@ -658,7 +662,7 @@ http_cli_new(lsn_t *lsn, int cli_fd, struct sockaddr_in *peer_addr)
 err:
 
     if (lt_cli_rd)
-        lthread_destroy(lt_cli_rd);
+        lthread_cancel(lt_cli_rd);
 
     shutdown(cli_fd, SHUT_RDWR);
     lthread_close(cli_fd);
@@ -683,13 +687,14 @@ lsn_init(lsn_t *lsn, route_handler_cb_t cb, char *log_path, char *app_name)
     return 0;
 }
 
-void
-lsn_run(lsn_t *lsn)
+void *
+lsn_run(void *lsn)
 {
     lthread_t *lt = NULL;
     lthread_create(&lt, http_listener, lsn);
-    lthread_create(&lt, bd_lt_listener, (void*)0);
-    lthread_join();
+    lthread_run();
+
+    return NULL;
 }
 
 void

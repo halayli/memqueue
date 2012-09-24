@@ -30,7 +30,7 @@
  * |     entry          | ----> item
  * ----------------------
 */
-#include "common/queue.h" 
+#include <sys/queue.h>
 #include <stdint.h>
 
 uint32_t h_hash_func(const char *key, uint32_t len);

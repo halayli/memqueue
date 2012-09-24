@@ -23,7 +23,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "common/queue.h" 
+#include <sys/queue.h>
 #include "hash.h"
 
 h_hash_t *

@@ -21,7 +21,7 @@
 #ifndef _HTTP_IMPL_H_
 #define _HTTP_IMPL_H_
 
-#include "common/queue.h"
+#include <sys/queue.h>
 #include <lthread.h>
 #include "http_str.h"
 #include "log.h"

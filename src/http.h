@@ -25,7 +25,7 @@
 
 int http_respond(int http_code, char *body, uint64_t body_len);
 void http_set_respcode(int);
-void lsn_run(lsn_t *lsn);
+void *lsn_run(void *lsn);
 int lsn_init(lsn_t *lsn, route_handler_cb_t cb, char *file_path,char *app_name);
 void http_add_header(http_cli_t *cli, char *name, char *value);
 char *http_get_method_str(void);

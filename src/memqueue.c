@@ -61,7 +61,7 @@ static void memqueue_unbind_all(cli_binder_t *b);
 static void consumer_free(consumer_t *consumer);
 static void memqueue_refresh_consumer(memqueue_t *q, char *consumer_id);
 
-static void obj_cleaner(lthread_t *lt, void *arg);
+static void obj_cleaner(void *arg);
 
 static int queue_poll(poll_args_t *user_args);
 static int is_memqueue_full(memqueue_t *q);
@@ -132,6 +132,7 @@ queue_poll(poll_args_t *user_args)
     }
 
     if (total_bound_queues == 0) {
+        cli_binder_free(cli_binder);
         memqueue_respond(MEMQUEUE_NOT_FOUND, NULL);
         return 0;
     }
@@ -590,9 +591,10 @@ memqueue_refresh_consumer(memqueue_t *q, char *consumer_id)
 }
 
 static void
-obj_cleaner(lthread_t *lt, void *arg)
+obj_cleaner(void *arg)
 {
     uint32_t sleep = 0;
+    lthread_detach();
     while (1) {
         if (sleep != 1)
             lthread_cond_wait(memqueue_ins.cond, sleep);
@@ -704,13 +706,16 @@ on_serv_file(h_hash_t *args)
     char *filename = h_get(args, "filename");
     char *filepath = NULL;
 
+    return -2;
     if (asprintf(&filepath, "/tmp/%s", filename) == -1)
         return -2;
 
     int fd = open(filepath, O_RDONLY, 0);
 
-    if (!fd)
+    if (!fd) {
+        free(filepath);
         return -2;
+    }
 
     http_sendfile(200, fd);
 

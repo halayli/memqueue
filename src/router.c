@@ -21,7 +21,7 @@
 #include "router.h"
 #include <string.h>
 #include <pcre.h>
-#include "common/queue.h"
+#include <sys/queue.h>
 
 struct http_route {
     char *path;
