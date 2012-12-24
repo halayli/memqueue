@@ -45,12 +45,12 @@ static void cli_wakeup(cli_binder_t *cli_binder);
 static void cli_binder_free(cli_binder_t *b);
 
 static void memqueue_respond(memqueue_ret_t ret, void *ptr);
-static json_object* memqueue_result_create(cli_binder_t *cli_binder);
+static json_object* memqueue_create_result(cli_binder_t *cli_binder);
 
 static void memqueue_msg_free(msg_t *msg);
 static int memqueue_msg_create(memqueue_t *q, int32_t msecs, void *data,
     uint64_t data_len);
-static void msg_retain(msg_t *msg);
+static void memqueue_msg_retain(msg_t *msg);
 
 static memqueue_t *memqueue_create(memqueue_create_args_t *args);
 
@@ -59,12 +59,12 @@ static int memqueue_bind(memqueue_t *q, cli_binder_t *b, int rev,
     int include_consumers);
 static void memqueue_unbind_all(cli_binder_t *b);
 
-static void consumer_free(consumer_t *consumer);
+static void memqueue_free_consumer(consumer_t *consumer);
 static void memqueue_refresh_consumer(memqueue_t *q, char *consumer_id);
 
 static void obj_cleaner(void *arg);
 
-static int queue_poll(poll_args_t *user_args);
+static int memqueue_poll_queue(poll_args_t *user_args);
 static int is_memqueue_full(memqueue_t *q);
 
 struct {
@@ -91,7 +91,7 @@ struct {
 };
 
 static int
-queue_poll(poll_args_t *user_args)
+memqueue_poll_queue(poll_args_t *user_args)
 {
 
     int rev = 0;
@@ -155,7 +155,7 @@ queue_poll(poll_args_t *user_args)
 }
 
 static void
-consumer_free(consumer_t *consumer)
+memqueue_free_consumer(consumer_t *consumer)
 {
     h_remove(consumer->memqueue->consumers, consumer->consumer_id);
     free(consumer->consumer_id);
@@ -163,7 +163,7 @@ consumer_free(consumer_t *consumer)
 }
 
 void
-msg_release(msg_t *msg)
+memqueue_msg_release(msg_t *msg)
 {
     msg->new = 0;
     msg->ref_count--;
@@ -183,7 +183,7 @@ msg_release(msg_t *msg)
 }
 
 static void
-msg_retain(msg_t *msg)
+memqueue_msg_retain(msg_t *msg)
 {
     msg->ref_count++;
     memqueue_retain(msg->memqueue);
@@ -238,7 +238,7 @@ memqueue_respond(memqueue_ret_t ret, void *ptr)
                 json_str(memqueue_ret[ret].ret_desc));
             break;
         case MEMQUEUE_MSGS:
-            msgs = memqueue_result_create((cli_binder_t *)ptr);
+            msgs = memqueue_create_result((cli_binder_t *)ptr);
             json_object_object_add(resp_object, "results", msgs);
             break;
         case MEMQUEUE_MSG_ADDED:
@@ -261,7 +261,7 @@ memqueue_respond(memqueue_ret_t ret, void *ptr)
 }
 
 static json_object*
-memqueue_result_create(cli_binder_t *cli_binder)
+memqueue_create_result(cli_binder_t *cli_binder)
 {
     json_object *resp_object = NULL;
     json_object *queue_object = NULL;
@@ -436,7 +436,7 @@ cli_binder_enqueue_msg(cli_binder_t *cli_binder, msg_t *msg)
     pending_msg->msg = msg;
 
     TAILQ_INSERT_TAIL(&cli_binder->pending_msgs, pending_msg, next);
-    msg_retain(msg);
+    memqueue_msg_retain(msg);
 
     return 0;
 }
@@ -480,11 +480,11 @@ memqueue_msg_create(memqueue_t *q, int32_t msecs, void *data,
         /* only retain msg if it has an expiry. If it doesn't it will
          * get consumed by consumers and freed immediately.
          */
-        msg_retain(new_msg);
+        memqueue_msg_retain(new_msg);
     }
 
     if (msecs == -1)
-        msg_retain(new_msg);
+        memqueue_msg_retain(new_msg);
 
     LOG_TRACE("A new message %llu in queue %s created successfully."
         "(rev: %d, expiry %d, data_len: %d)",
@@ -523,7 +523,7 @@ cli_binder_release_pending_msgs(cli_binder_t *cli_binder)
 
     TAILQ_FOREACH_SAFE(pending_msg, &cli_binder->pending_msgs, next,
         pending_msg_tmp) {
-        msg_release(pending_msg->msg);
+        memqueue_msg_release(pending_msg->msg);
         TAILQ_REMOVE(&cli_binder->pending_msgs, pending_msg, next);
         free(pending_msg);
     }
@@ -610,7 +610,7 @@ consumer_expired(consumer_t *consumer)
     memqueue_msg_create(consumer->memqueue, 2000, tmp, strlen(tmp));
     free(tmp);
     memqueue_release(consumer->memqueue);
-    consumer_free(consumer);
+    memqueue_free_consumer(consumer);
 }
 
 static int
@@ -672,8 +672,8 @@ is_memqueue_full(memqueue_t *q)
     if (q->max_size &&
         q->msgs_in_queue >= q->max_size &&
         q->drop_from_head) {
-        msg_retain(TAILQ_FIRST(&q->msg_queue));
-        msg_release(TAILQ_FIRST(&q->msg_queue));
+        memqueue_msg_retain(TAILQ_FIRST(&q->msg_queue));
+        memqueue_msg_release(TAILQ_FIRST(&q->msg_queue));
         return 0;
     }
 
@@ -728,7 +728,7 @@ on_queue_poll(h_hash_t *args)
 
     args_memqueue_poll_populate(&user_args, args);
 
-    return queue_poll(&user_args);
+    return memqueue_poll_queue(&user_args);
 
 }
 
@@ -739,7 +739,7 @@ on_multi_queue_poll(h_hash_t *args)
 
     args_memqueue_poll_populate(&user_args, NULL);
 
-    return queue_poll(&user_args);
+    return memqueue_poll_queue(&user_args);
 }
 
 int

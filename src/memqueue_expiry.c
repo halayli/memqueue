@@ -214,7 +214,7 @@ objs_expire(memqueue_ins_t *ins, obj_type_t type)
             if (type == MSG_TYPE) {
                 LIST_FOREACH_SAFE(msg, &data->msg_objs, expiry_next, msg_tmp) {
                     LIST_REMOVE(msg, expiry_next);
-                    msg_release(msg);
+                    memqueue_msg_release(msg);
                     msg->expiry_node = NULL;
                 }
             } else if (type == MEMQUEUE_TYPE) {

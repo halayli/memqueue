@@ -174,7 +174,7 @@ struct consumer {
 #define json_str(x) json_object_new_string((x))
 
 void memqueue_release(memqueue_t *q);
-void msg_release(msg_t *msg);
+void memqueue_msg_release(msg_t *msg);
 void obj_sched_expire(memqueue_ins_t *ins, void *obj, uint32_t msecs,
     obj_type_t type);
 uint32_t sched_get_min_timeout(memqueue_ins_t *ins);
