@@ -23,6 +23,7 @@
 #include <ctype.h>
 #include <assert.h>
 
+#include "log.h"
 #include "http_impl.h"
 
 int
@@ -86,8 +87,7 @@ http_parse_req_line(http_cli_t *c)
                     return HTTP_ERR_INV_HOST;
                 if ((c->req.host = \
                     strndup(&hdr[host_start], p - host_start)) == NULL) {
-                    app_log(c->lsn->debug_log, APP_ERR,
-                        NOMEM "not enought memory to copy host");
+                    LOG_ERROR(NOMEM "not enough memory to copy host");
                     return HTTP_FAIL;
                 }
                 if (hdr[p] == ':') {
@@ -201,8 +201,7 @@ http_parse_req_hdr(http_cli_t *c)
             if (c->req.host)
                 free(c->req.host);
             if ((c->req.host = strndup(tmp, p - tmp)) == NULL) {
-                app_log(c->lsn->debug_log, APP_ERR,
-                    NOMEM "not enought memory to copy host");
+                LOG_ERROR(NOMEM "not enough memory to copy host");
                 return HTTP_FAIL;
             }
             c->req.port = strtol(p, NULL, 10);
@@ -210,8 +209,7 @@ http_parse_req_hdr(http_cli_t *c)
             if (c->req.host)
                 free(c->req.host);
             if ((c->req.host = strndup(tmp, p - tmp)) == NULL) {
-                app_log(c->lsn->debug_log, APP_ERR,
-                    NOMEM "not enought memory to copy host");
+                LOG_ERROR(NOMEM "not enough memory to copy host");
                 return HTTP_FAIL;
             }
         }

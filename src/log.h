@@ -18,28 +18,43 @@
 
   log.h
 */
-#ifndef _HTTP_LOG_H_
-#define _HTTP_LOG_H_
-#include <stdio.h>
-#include <stdlib.h>
+#ifndef LOG_H_
+#define LOG_H_
 #include <stdarg.h>
 
 /*
  * logger functionalities
  */
-typedef enum {
-    APP_INFO,
-    APP_WRN,
-    APP_TRC,
-    APP_DBG,
-    APP_ERR,
-    APP_NOOP,
-} log_level_t;
+enum log_levels {
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_WARN,
+    LOG_LEVEL_TRACE,
+    LOG_LEVEL_ERROR,
+    LOG_LEVEL_NOOP
+};
 
-struct _log;
-typedef struct _log log_t;
+void log_(enum log_levels level, const char *module,
+    const char *fmt, ...);
 
-int app_log(log_t *log, log_level_t level, char *fmt, ...);
-log_t * app_log_new(log_level_t level, char *path, char *filename);
+void log_initialize(const char *path, enum log_levels level);
+
+void log_set_level(enum log_levels level);
+
+#define LOG(level, fmt, ...)                 \
+do {                                         \
+    log_(level, __FILE__, fmt, ##__VA_ARGS__); \
+} while (0)                                  \
+
+#define LOG_WARN(fmt, ...)                   \
+    LOG(LOG_LEVEL_WARN, fmt, ##__VA_ARGS__)  \
+
+#define LOG_ERROR(fmt, ...)                  \
+    LOG(LOG_LEVEL_ERROR, fmt, ##__VA_ARGS__) \
+
+#define LOG_TRACE(fmt, ...)                  \
+    LOG(LOG_LEVEL_TRACE, fmt, ##__VA_ARGS__) \
+
+#define LOG_INFO(fmt, ...)                   \
+    LOG(LOG_LEVEL_INFO, fmt, ##__VA_ARGS__)  \
 
 #endif

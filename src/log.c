@@ -25,68 +25,77 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <inttypes.h>
+#include <err.h>
+#include <fcntl.h>
+#include <time.h>
 
 #include <lthread.h>
-
-#include "http_impl.h"
+#include "log.h"
 
 struct _log {
-    char *app_name;
-    FILE *log_fp;
+    int fd;
     char *file_path;
-    int log_level;
+    int level;
 };
 
 static char *log_levels[] = {
-    [APP_INFO] = "[INFO]: ",
-    [APP_WRN] = "[WARN]: ",
-    [APP_TRC] = "[TRC]: ",
-    [APP_DBG] = "[DBG]: ",
-    [APP_ERR] = "[ERR]: ",
-    [APP_NOOP] = "",
+    [LOG_LEVEL_INFO] = "[INFO]: ",
+    [LOG_LEVEL_WARN] = "[WARN]: ",
+    [LOG_LEVEL_TRACE] = " [TRC]: ",
+    [LOG_LEVEL_ERROR] = " [ERR]: ",
+    [LOG_LEVEL_NOOP] = "[NOOP]: ",
 };
 
-log_t *
-app_log_new(log_level_t level, char *path, char *filename)
+char log_fmt[1024] = {0};
+
+static struct _log l = {0};
+
+void
+log_(enum log_levels level, const char *module, const char *fmt, ...)
 {
+     va_list arglist;
+    if (level != LOG_LEVEL_ERROR && l.level < level)
+        return;
 
-    log_t *log = NULL;
-    char *file_path = NULL;
+    time_t now;
+    time(&now);
+    if (level == LOG_LEVEL_ERROR)
+        strcpy(log_fmt, "\033[31m");
+    else
+        strcpy(log_fmt, "\033[0m");
 
-    if ((log = malloc(sizeof(log_t))) == NULL)
-        return NULL;
+    strcpy((char *)(log_fmt + strlen(log_fmt)), ctime(&now));
+    sprintf(log_fmt + strlen(log_fmt) - 5, " %-15s %s %s\n", module, log_levels[level], fmt);
 
-    if (asprintf(&file_path, "%s/%s.log", path, filename)) {
-        if ((log->log_fp = fopen(file_path, "a+")) == NULL) {
-            fprintf(stderr, "Failed to open log file %s\n", file_path);
-            free(file_path);
-            return NULL;
-        }
+    if (l.fd == -1) {
+        va_start(arglist, fmt);
+        vdprintf(2, log_fmt, arglist);
+        va_end(arglist);
+        return;
     }
 
-    log->file_path = file_path;
-    log->log_level = level;
-
-    return log;
+    va_start(arglist, fmt);
+    vdprintf(l.fd, log_fmt, arglist);
+    va_end(arglist);
 }
 
-int
-app_log(log_t *log, log_level_t level, char *fmt, ...)
+void
+log_set_level(enum log_levels level)
 {
-    va_list arglist;
-    char *new_fmt = NULL;
+    l.level = level;
+}
 
-    if (!log || !log->log_fp)
-        return -1;
+void
+log_initialize(const char *path, enum log_levels level)
+{
 
-    asprintf(&new_fmt, "%"PRIu64":%s%s\n", lthread_id(), log_levels[level], fmt);
+    char log_path[1024] = {0};
+    sprintf(log_path, "%s/memqueue.log", path);
 
-    va_start(arglist, fmt);
-    vfprintf(log->log_fp, new_fmt, arglist);
-    fflush(log->log_fp);
-    free(new_fmt);
-    va_end(arglist);
-
-    return 0;
+    l.level = level;
+    l.fd = open(log_path, O_CREAT | O_APPEND | O_WRONLY, 0640);
+    if (l.fd < 0) {
+        warn("Cannot open file %s for logging", log_path);
+        l.fd = 2; /* stderr */
+    }
 }

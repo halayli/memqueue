@@ -156,7 +156,6 @@ struct memqueue_ins {
     struct rb_root consumer_expiry;
     lthread_cond_t *cond;
     lthread_t *lt_sleep;
-    log_t *app_log;
     uint64_t unique_msg_id;
     
 };

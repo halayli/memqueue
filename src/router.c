@@ -18,10 +18,13 @@
 
   router.c
 */
-#include "router.h"
+#include <stdio.h>
 #include <string.h>
 #include <pcre.h>
 #include <sys/queue.h>
+
+#include "router.h"
+#include "log.h"
 
 struct http_route {
     char *path;
@@ -56,11 +59,11 @@ http_route_on(char *method, char *path, route_cb_t cb)
     route->method = method;
     route->re = pcre_compile(path, 0, &error, &erroffset, NULL);
     if (route->re == NULL) {
-        printf("PCRE compilation failed at offset %d: %s\n", erroffset, error);
+        LOG_ERROR("PCRE compilation failed at offset %d: %s", erroffset, error);
         free(route);
         return -1;
     }
-    printf("Route %s added successfully\n", path);
+    LOG_INFO("Route %s added successfully", path);
 
     LIST_INSERT_HEAD(&routes, route, next);
     return 0;
@@ -81,7 +84,6 @@ http_route_handle_request(void)
     int ret = 0;
 
     LIST_FOREACH(route, &routes, next) {
-        //printf("matching %s to %s\n", route->path, cli->req.path);
         if (strcmp(route->method, http_get_method_str()) != 0)
             continue;
         rc = pcre_exec(route->re, NULL, path,
@@ -92,7 +94,6 @@ http_route_handle_request(void)
         matched = 1;
         rc = pcre_fullinfo(route->re, NULL, PCRE_INFO_NAMECOUNT, &namecount);
         /* group subpatterns exist, hand them off to the caller */
-        //printf("namecount is %d\n", namecount);
         if (namecount > 0) {
             pcre_fullinfo(route->re, NULL, PCRE_INFO_NAMETABLE, &name_table);
             pcre_fullinfo(route->re, NULL, PCRE_INFO_NAMEENTRYSIZE,

@@ -43,10 +43,11 @@
 #include "http.h"
 #include "http_bd.h"
 #include "sock_easy.h"
-#include "log.h"
 #include <lthread.h>
 #include "time.h"
 #include <netinet/tcp.h>
+
+#include "log.h"
 
 int total = 0;
 /************************************************************************
@@ -114,8 +115,7 @@ http_cli_resp_hdr_create(http_cli_t *c, struct iovec **_iovecs)
     iovecs = malloc(sizeof(struct iovec) * total_iovecs);
 
     if (!iovecs) {
-        app_log(c->lsn->debug_log, APP_ERR,
-            NOMEM "not enough memory to create resp header.");
+        LOG_ERROR(NOMEM "not enough memory to create resp header.");
         return -1;
     }
 
@@ -207,8 +207,7 @@ http_recv_hdr(http_cli_t *cli)
             cli->req.hdr.hdr_len = hdr_len;
             cli->req.body_len = recvd - hdr_len;
             if ((cli->req.body = malloc(cli->req.body_len)) == NULL) {
-                app_log(cli->lsn->debug_log, APP_ERR,
-                    NOMEM "not enough memory to recv body.");
+                LOG_ERROR("not enough memory to recv body.");
                 return HTTP_FAIL;
             }
             memcpy(cli->req.body, &cli->req.hdr.hdr[cli->req.hdr.hdr_len],
@@ -330,28 +329,28 @@ http_handle_cli_req_err(http_cli_t *cli, int err)
 
     switch(err) {
     case HTTP_ERR_UNKNOWN_HOST:
-        app_log(cli->lsn->debug_log, APP_TRC, "Unknown host.");
+        LOG_TRACE("Unknown host.");
         break;
     case HTTP_ERR_NO_CNT_LEN:
-        app_log(cli->lsn->debug_log, APP_TRC, "no cnt len.");
+        LOG_TRACE("no cnt len.");
         break;
     case HTTP_ERR_INV_REQ_LINE:
-        app_log(cli->lsn->debug_log, APP_TRC, "invalid request line.");
+        LOG_TRACE("invalid request line.");
         break;
     case HTTP_ERR_MAX_HDR_EXC:
-        app_log(cli->lsn->debug_log, APP_TRC, "max hdr exceeded.");
+        LOG_TRACE("max hdr exceeded.");
         break;
     case HTTP_ERR_INV_HOST:
-        app_log(cli->lsn->debug_log, APP_TRC, "invalid host.");
+        LOG_TRACE("invalid host.");
         break;
     case HTTP_ERR_INV_PORT:
-        app_log(cli->lsn->debug_log, APP_TRC, "invalid port.");
+        LOG_TRACE("invalid port.");
         break;
     case HTTP_ERR_INV_PROTO:
-        app_log(cli->lsn->debug_log, APP_TRC, "invalid protocol.");
+        LOG_TRACE("invalid protocol.");
         break;
     case HTTP_ERR_TIMEOUT_EXC:
-        app_log(cli->lsn->debug_log, APP_TRC, "connection timed out.");
+        LOG_TRACE("connection timed out.");
         break;
     }
 }
@@ -363,7 +362,7 @@ http_log_req(http_cli_t *cli)
 
     inet_ntop(AF_INET, &cli->conn.peer_addr.sin_addr,
         ipstr, INET_ADDRSTRLEN);
-    app_log(cli->lsn->access_log, APP_NOOP, "%s %s %s %s [%s]",
+    LOG_TRACE("%s %s %s %s [%s]",
         ipstr,
         http_get_method_str(),
         cli->req.uri,
@@ -398,8 +397,7 @@ http_recv_exact(http_cli_t *cli)
     while (recvd < cli->req.hdr.cnt_len) {
         tmp = realloc(cli->req.body, recvd + TCP_BUF_SIZE);
         if (tmp == NULL) {
-            app_log(cli->lsn->debug_log, APP_ERR,
-                NOMEM "not enough memory to recv body.");
+            LOG_ERROR(NOMEM "not enough memory to recv body.");
             free(cli->req.body);
             cli->req.body = NULL;
             return -1;
@@ -512,8 +510,7 @@ http_recv_chunked(http_cli_t *cli)
         tmp = realloc(cli->req.body, recvd + TCP_BUF_SIZE);
         if (tmp == NULL) {
             free(cli->req.body);
-            app_log(cli->lsn->debug_log, APP_ERR,
-                NOMEM "not enough memory to recv body.");
+            LOG_ERROR(NOMEM "not enough memory to recv body.");
             cli->req.body = NULL;
             return -1;
         }
@@ -553,8 +550,6 @@ http_handle_cli_rd(http_cli_t *cli)
     }
 
     http_set_path(cli);
-    /*if (cli->lsn->srv_log.log_level == SRV_DBG)
-        http_print_exact(cli->req.hdr.hdr, cli->req.hdr.hdr_len);*/
 
     if (cli->req.method == HTTP_POST)
         http_recvbody(cli);
@@ -605,12 +600,11 @@ http_listener(void *arg)
 
     DEFINE_LTHREAD;
 
-    printf("lsn_fd is %d\n", lsn_fd);
     lsn_fd = dup(lsn_fd);
     if (lsn_fd == -1)
         return;
 
-    printf("Starting listener on %d\n", lsn->lsn_port);
+    LOG_INFO("Starting listener on %d", lsn->lsn_port);
 
     while (1) {
         cli_fd = lthread_accept(lsn_fd, (struct sockaddr*)&peer_addr, &addrlen);
@@ -638,8 +632,7 @@ http_cli_new(lsn_t *lsn, int cli_fd, struct sockaddr_in *peer_addr)
     }
 
     if ((cli = calloc(1, sizeof(http_cli_t))) == NULL) {
-        app_log(lsn->debug_log, APP_ERR,
-            NOMEM "not enough memory for cli calloc.");
+        LOG_ERROR(NOMEM "not enough memory for cli calloc.");
         return;
     }
 
@@ -651,7 +644,7 @@ http_cli_new(lsn_t *lsn, int cli_fd, struct sockaddr_in *peer_addr)
 
     ret = lthread_create(&lt_cli_rd, (void*)http_lt_cli_rd, cli);
     if (ret != 0) {
-        app_log(lsn->debug_log, APP_WRN, "http_cli_new failed");
+        LOG_WARN("http_cli_new failed");
         goto err;
     }
 
@@ -669,19 +662,12 @@ err:
 }
 
 int
-lsn_init(lsn_t *lsn, route_handler_cb_t cb, char *log_path, char *app_name)
+lsn_init(lsn_t *lsn, route_handler_cb_t cb)
 {
     if (lsn == NULL)
         return -1;
 
-    char tmp[256];
     lsn->birth = rdtsc();
-    lsn->log_path = log_path;
-    lsn->app_name = app_name;
-    sprintf(tmp, "%s_%s", app_name, "srv_dbg");
-    lsn->debug_log = app_log_new(APP_TRC, log_path, tmp);
-    sprintf(tmp, "%s_%s", app_name, "srv_access");
-    lsn->access_log = app_log_new(APP_NOOP, log_path, tmp);
     lsn->router_cb = cb;
 
     return 0;

@@ -26,6 +26,7 @@
 #include <signal.h>
 #include <string.h>
 #include <err.h>
+#include <errno.h>
 #include <sys/resource.h>
 
 #include <arpa/inet.h>
@@ -62,11 +63,12 @@ handle_args (int argc, char **argv, lsn_t *lsn)
     "-a <ip>    : http listener IP address (default: 0.0.0.0)\n"
     "-i <eth>   : http listener interface\n"
     "-h         : print this help message and exits\n"
-    "-l <level> : set log level to info|error|debug|trace\n";
+    "-t <path>  : set log path\n"
+    "-l <level> : set log level to info|error|trace\n";
 
     lsn->lsn_port = 5556;
 
-    while ((c = getopt(argc, argv, "l:hp:")) != -1) {
+    while ((c = getopt(argc, argv, "l:hp:t:")) != -1) {
         switch(c) {
         case 'p':
             lsn->lsn_port = strtol(optarg, NULL, 10);
@@ -76,21 +78,17 @@ handle_args (int argc, char **argv, lsn_t *lsn)
                 goto done;
             }
             break;
+        case 't':
+            log_initialize(optarg, LOG_LEVEL_INFO);
         case 'l':
-            /*
             if (strcasecmp(optarg, "error") == 0)
-                lsn->http_log_level = SRV_ERR;
+                log_set_level(LOG_LEVEL_ERROR);
             else if (strcasecmp(optarg, "warn") == 0)
-                lsn->http_log_level = SRV_WRN;
+                log_set_level(LOG_LEVEL_WARN);
             else if (strcasecmp(optarg, "trace") == 0)
-                lsn->http_log_level = SRV_TRC;
-            else if (strcasecmp(optarg, "debug") == 0)
-                lsn->http_log_level = SRV_DBG;
+                log_set_level(LOG_LEVEL_TRACE);
             else if (strcasecmp(optarg, "info") == 0)
-                lsn->http_log_level = SRV_INFO;
-            else
-                lsn->http_log_level = 0;
-            */
+                log_set_level(LOG_LEVEL_INFO);
             break;
         case 'h':
         default:
@@ -127,50 +125,12 @@ main(int argc, char *argv[])
     if (handle_args(argc, argv, &lsn) == -1)
         exit(1);
 
-#ifdef __FreeBSD__
-    struct rlimit limit;
-    struct rtprio prio = {.type = RTP_PRIO_REALTIME, .prio = 0};
-    limit.rlim_cur = limit.rlim_max = 30000;
-
-    if (rtprio(RTP_SET, getpid(), &prio) == -1)
-        perror("Warning: Failed to set rtprio");
-
-    if (setrlimit(RLIMIT_NOFILE, &limit) == -1)
-        perror("Cannot set maximum file limit");
-
-    limit.rlim_cur = limit.rlim_max = 1024*1024*2000;
-
-    if (setrlimit(RLIMIT_AS, &limit) == -1)
-        perror("Cannot set maximum file limit");
-
-    if (setrlimit(RLIMIT_DATA, &limit) == -1)
-        perror("Cannot set maximum file limit");
-
-    if (setrlimit(RLIMIT_SBSIZE, &limit) == -1)
-        perror("Cannot set maximum file limit");
-#endif
-
     http_route_init();
-    if (lsn_init(&lsn, http_route_handle_request, "/tmp", "memqueue") != 0)
+    if (lsn_init(&lsn, http_route_handle_request) != 0)
         exit(1);
 
     
     lsn_fd = e_listener("127.0.0.1", lsn.lsn_port);
-    /*
-    int pid = 0;
-    int i = 0;
-    for (i = 0; i < 1; i++) {
-        pid = fork();
-        printf("forking %d\n", pid);
-        if (pid == 0) {
-            memqueue_init();
-            lsn_run(&lsn);
-        }
-    }
-
-    if (pid)
-        waitpid(pid, NULL, 0);
-    */
     memqueue_init();
     lsn_run(&lsn);
 

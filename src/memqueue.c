@@ -30,6 +30,7 @@
 
 #include "memqueue_impl.h"
 #include "router.h"
+#include "log.h"
 #include "args_parser.h"
 
 static memqueue_ins_t memqueue_ins = {0};
@@ -167,11 +168,9 @@ msg_release(msg_t *msg)
     msg->new = 0;
     msg->ref_count--;
 
-    //printf("msg %"PRIu64" ref_count is %d\n", msg->msg_id, msg->ref_count);
     assert(msg->ref_count >= 0);
     if (msg->ref_count == 0) {
-        app_log(memqueue_ins.app_log, APP_TRC,
-            "msg %llu in queue %s has expired.",
+        LOG_TRACE("msg %llu in queue %s has expired.",
             msg->msg_id,
             msg->memqueue->q_id);
         TAILQ_REMOVE(&msg->memqueue->msg_queue, msg, next);
@@ -204,7 +203,7 @@ memqueue_release(memqueue_t *q)
     assert(q->ref_count >= 0);
 
     if (q->ref_count == 0) {
-        app_log(memqueue_ins.app_log, APP_TRC, "Queue %s expired.", q->q_id);
+        LOG_TRACE("Queue %s expired.", q->q_id);
         h_remove(memqueue_ins.queue_store, q->q_id);
 
         while ((item = h_next(q->consumers))) {
@@ -390,8 +389,7 @@ memqueue_create(memqueue_create_args_t *args)
 
     h_insert(memqueue_ins.queue_store, q->q_id, q);
 
-    app_log(memqueue_ins.app_log, APP_TRC,
-        "Queue %s created successfully. "
+    LOG_TRACE("Queue %s created successfully. "
         "(rev: %d, expiry: %d, max_size: %d, consumer_expiry: %d "
         "drop_from_head: %d)",
         q->q_id,
@@ -399,8 +397,7 @@ memqueue_create(memqueue_create_args_t *args)
         q->expiry,
         q->max_size,
         q->consumer_expiry,
-        q->drop_from_head
-    );
+        q->drop_from_head);
 
     return q;
 }
@@ -489,8 +486,7 @@ memqueue_msg_create(memqueue_t *q, int32_t msecs, void *data,
     if (msecs == -1)
         msg_retain(new_msg);
 
-    app_log(memqueue_ins.app_log, APP_TRC,
-        "A new message %llu in queue %s created successfully."
+    LOG_TRACE("A new message %llu in queue %s created successfully."
         "(rev: %d, expiry %d, data_len: %d)",
         new_msg->msg_id,
         q->q_id,
@@ -754,7 +750,6 @@ memqueue_init(void)
 
     char tmp[256];
     sprintf(tmp, "%s_%s", "memqueue", "app_dbg");
-    memqueue_ins.app_log = app_log_new(APP_TRC, "/tmp" , tmp);
     memqueue_ins.birth = rdtsc();
     lthread_cond_create(&memqueue_ins.cond);
     lthread_create(&memqueue_ins.lt_sleep, obj_cleaner, NULL);

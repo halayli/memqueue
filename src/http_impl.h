@@ -24,7 +24,6 @@
 #include <sys/queue.h>
 #include <lthread.h>
 #include "http_str.h"
-#include "log.h"
 #include "hash.h"
 
 #define TCP_BUF_SIZE        (32*1024)
@@ -146,12 +145,8 @@ typedef int (*route_handler_cb_t)(void);
 struct lsn {
     unsigned short  lsn_port;
     struct in_addr  lsn_addr;
-    log_t           *debug_log;
-    log_t           *access_log;
     uint64_t        birth;
     route_handler_cb_t   router_cb;
-    char            *app_name;
-    char            *log_path;
 };
 
 /*
