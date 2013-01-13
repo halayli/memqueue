@@ -1,5 +1,5 @@
 src = src/log.c src/http_impl.c src/http_parser.c src/http_str.c \
-    src/router.c src/hash.c src/sock_easy.c src/http_conn.c \
+    src/router.c src/rbtree.c src/hash.c src/sock_easy.c src/http_conn.c \
     src/memqueue_expiry.c src/memqueue.c src/time.c src/http_bd.c src/main.c \
     src/args_parser.c
 gccflags = -g
