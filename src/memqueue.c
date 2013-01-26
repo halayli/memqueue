@@ -84,6 +84,8 @@ struct {
         {408, "MEMQUEUE_TIMEOUT", "poll timed out"},
     [MEMQUEUE_MSGS] =
         {200, "MEMQUEUE_MSGS", ""},
+    [MEMQUEUE_QUEUE_INFO] =
+        {200, "MEMQUEUE_QUEUE_INFO", "Queue information"},
     [MEMQUEUE_DELETED] =
         {200, "MEMQUEUE_DELETED", "memqueue deleted successfully"},
     [MEMQUEUE_FULL] =
@@ -247,6 +249,14 @@ memqueue_respond(memqueue_ret_t ret, void *ptr)
             memqueue = (memqueue_t*)ptr;
             json_object_object_add(resp_object, "rev",
                 json_object_new_int(memqueue->rev));
+        case MEMQUEUE_QUEUE_INFO:
+            json_object_object_add(resp_object, "ret_desc",
+                json_str(memqueue_ret[ret].ret_desc));
+            memqueue = (memqueue_t*)ptr;
+            json_object_object_add(resp_object, "rev",
+                json_object_new_int(memqueue->rev));
+            json_object_object_add(resp_object, "msgs_in_queue",
+                json_object_new_int(memqueue->msgs_in_queue));
         case MEMQUEUE_DELETED:
         case MEMQUEUE_CREATED:
         case MEMQUEUE_OK:
@@ -661,6 +671,22 @@ on_msg_post(h_hash_t *args)
 }
 
 static int
+on_queue_info(h_hash_t *args)
+{
+    char *q_id = h_get(args, "q_id");
+
+    memqueue_t *q = h_get(memqueue_ins.queue_store, q_id);
+    if (!q) {
+        memqueue_respond(MEMQUEUE_NOT_FOUND, NULL);
+        return 0;
+    }
+
+    memqueue_respond(MEMQUEUE_QUEUE_INFO, q);
+
+    return 0;
+}
+
+static int
 is_memqueue_full(memqueue_t *q)
 {
     if (q->max_size <= 0)
@@ -760,6 +786,7 @@ memqueue_init(void)
     http_route_on("PUT", "/(?<q_id>.+)/?", on_queue_create);
     http_route_on("POST", "/(?<q_id>.*)/?", on_msg_post);
     http_route_on("DELETE", "/(?<q_id>.*)/?", on_queue_delete);
+    http_route_on("HEAD", "/(?<q_id>.*)/?", on_queue_info);
 
     return 0;
 }
