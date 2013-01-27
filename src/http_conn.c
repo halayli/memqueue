@@ -37,5 +37,5 @@ http_send(http_cli_t *cli, char *buf, uint64_t len)
 int
 http_recv(http_cli_t *cli, char *buf, uint64_t len)
 {
-    return lthread_recv(cli->conn.fd, buf, len, 0, 10000);
+    return lthread_recv(cli->conn.fd, buf, len, 0, 0);
 }
